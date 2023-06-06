@@ -170,9 +170,6 @@
   fetch("https://analisi.transparenciacatalunya.cat/resource/gn9e-3qhr.json")
     .then(r=>r.json())
     .then(arr=>{
-      //arr.sort((a,b)=>{
-      //  return b.dia-a.dia?1:-1;
-      //});
       app.embassaments=arr;
       dibuixa_grafic();
     });
