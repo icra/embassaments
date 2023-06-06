@@ -1,0 +1,225 @@
+<!doctype html><html>
+  <meta charset=utf8>
+  <title>Embassaments</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.0/dist/chart.umd.min.js"></script>
+<head><body>
+
+<div id=app>
+  <div v-if="!embassaments">carregant...</div>
+
+  <div v-if="embassaments">
+    <h1 style="margin:0;text-align:left">
+      Estat dels {{get_resum_embassaments.length}} embassaments Catalunya
+    </h1>
+
+    <table border=1
+      style="
+        font-family:monospace;
+        border-collapse:collapse;
+      "
+    >
+      <tr>
+        <th>Data
+        <th>Embassament
+        <th>Nivell absolut
+        <th>Volum embassat (hm<sup>3</sup>)
+        <th>Volum màxim (hm<sup>3</sup>)
+        <th>Percentatge
+        <th>Gràfic
+      </tr>
+
+      <tbody v-for="emb in get_resum_embassaments">
+        <tr>
+          <td>
+            {{emb.dia.substring(0,10)}}
+          </td>
+          <td>
+            {{emb.nom.replace("Embassament de ","")}}
+          </td>
+          <td style="text-align:center">{{emb.nivell_absolut}}</td>
+          <td style="text-align:center">{{emb.volum_embassat}}</td>
+          <td style="text-align:center">{{emb.volum_maxim.toFixed(2)}}</td>
+          <td :style="{textAlign:'center',color:color(emb.percentatge_volum_embassat)}">
+            <b>{{emb.percentatge_volum_embassat}}%</b>
+          </td>
+          <td style="padding:1px">
+            <div :style="{background:'#aaa',width:emb.volum_maxim+'px'}">
+              <div :style="{background:'#00b9f3',width:emb.volum_embassat+'px',height:'1.5em'}">
+              </div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+      <!--total-->
+      <tbody
+        v-for="
+          obj in [{
+            volum_embassat: get_resum_embassaments.map(e=>e.volum_embassat).reduce((p,c)=>parseFloat(p)+parseFloat(c),0),
+            volum_maxim: get_resum_embassaments.map(e=>e.volum_maxim).reduce((p,c)=>p+c,0),
+          }]
+        "
+      >
+        <tr v-for="perc in [100*obj.volum_embassat/obj.volum_maxim]">
+          <th colspan=3 style="text-align:center">Total</th>
+          <th>{{obj.volum_embassat.toFixed(2)}}</th>
+          <th>{{obj.volum_maxim.toFixed(2)}}</th>
+          <th :style="{color:color(perc)}">{{perc.toFixed(2)}}%</th>
+          <td style="padding:1px">
+            <div :style="{background:'#aaa',width:obj.volum_maxim+'px'}">
+              <div :style="{background:'#00b9f3',width:obj.volum_embassat+'px',height:'1.5em'}">
+              </div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="max-height:70vh;">
+    <canvas id=grafic></canvas>
+  </div>
+</div>
+
+<script>
+  let app=Vue.createApp({
+    data(){return {
+      embassaments:null, //raw data from api
+    }},
+
+    methods:{
+      color(num){
+        let r = 255*(100-num)/100;
+        let g = 255*(num)/100;
+        let b = 0;
+        return `rgb(${r},${g},${b})`;
+      },
+    },
+
+    computed:{
+      get_embassaments(){
+        //diccionari d'embassaments
+        let dicc={};
+        this.embassaments.forEach(dada=>{
+          //estructura dada: {dia,estaci,nivell_absolut,percentatge_volum_embassat,volum_embassat}
+          let dia    = dada.dia;
+          let estaci = dada.estaci;
+
+          //nou array
+          if(!dicc[estaci]){dicc[estaci]=[];}
+
+          //push dada a la seva estació
+          dicc[estaci].push(dada);
+        });
+        return dicc;
+      },
+
+      get_historic(){
+        let dicc={};//ret val
+        let dies_ordenats = this.get_dies_ordenats;
+        this.get_resum_embassaments.forEach(emb=>{
+          dicc[emb.nom]={};
+          dies_ordenats.forEach(dia=>{
+            dicc[emb.nom][dia]={volum_embassat:0};
+          });
+        })
+        this.embassaments.forEach(dada=>{
+          dicc[dada.estaci][dada.dia]=dada;
+        });
+        return dicc;
+      },
+
+      get_resum_embassaments(){
+        let arr=[];
+        Object.entries(this.get_embassaments).forEach(entry=>{
+          let nom                        = entry[0];
+          let dia                        = entry[1][0].dia;
+          let nivell_absolut             = entry[1][0].nivell_absolut;
+          let volum_embassat             = entry[1][0].volum_embassat;
+          let percentatge_volum_embassat = entry[1][0].percentatge_volum_embassat;
+          let volum_maxim                = volum_embassat*100/percentatge_volum_embassat;
+          arr.push({
+            nom,
+            dia,
+            nivell_absolut,
+            volum_embassat,
+            volum_maxim,
+            percentatge_volum_embassat,
+          });
+        });
+        arr.sort((a,b)=>{
+          return b.volum_maxim-a.volum_maxim;
+        });
+        return arr;
+      },
+
+      get_dies_ordenats(){
+        //get dies diferents
+        let dies = new Set();
+        this.embassaments.forEach(dada=>{
+          dies.add(dada.dia);
+        });
+        return Array.from(dies).sort();
+      },
+
+    },
+    //mounted(){},
+  }).mount("#app");
+
+  //crida api
+  fetch("https://analisi.transparenciacatalunya.cat/resource/gn9e-3qhr.json")
+    .then(r=>r.json())
+    .then(arr=>{
+      //arr.sort((a,b)=>{
+      //  return b.dia-a.dia?1:-1;
+      //});
+      app.embassaments=arr;
+      dibuixa_grafic();
+    });
+
+  function dibuixa_grafic(){
+    let el = document.getElementById("grafic");
+
+    let chart = new Chart(el,{
+      type:'bar',
+      data:{
+        labels:app.get_dies_ordenats.map(d=>d.substring(0,10)),
+        datasets:app.get_resum_embassaments.map(emb=>{
+          return {
+            label:emb.nom.replace("Embassament de ",""),
+            data: Object.values(app.get_historic[emb.nom]).map(dada=>dada.volum_embassat),
+            //backgroundColor,
+            //borderWidth,
+          };
+        }),
+      },
+      options:{
+        scales:{
+          x:{
+            stacked:true,
+          },
+          y:{
+            stacked:true,
+            title:{
+              display:true,
+              text:"Volum embassat (hm3)",
+            },
+            max:app.get_resum_embassaments.map(e=>e.volum_maxim).reduce((p,c)=>p+c,0),
+          },
+        },
+        plugins:{
+          title:{
+            display:true,
+            text:"Històric",
+            font:{
+              size:20,
+            },
+          },
+          legend:{
+            display:true,
+          },
+        },
+      },
+    });
+  };
+</script>
