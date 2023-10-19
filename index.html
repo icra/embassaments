@@ -6,6 +6,10 @@
   <style>
     body{
       background:white;
+      font-family:math;
+    }
+    th{
+      background:#efefef;
     }
   </style>
 <head><body>
@@ -31,7 +35,7 @@
         <th>Volum embassat (hm<sup>3</sup>)
         <th>Volum màxim (hm<sup>3</sup>)
         <th>% volum
-        <th>Gràfic
+        <th>Gràfic de barres
       </tr>
 
 
@@ -67,12 +71,16 @@
             volum_maxim: get_resum_embassaments.map(e=>e.volum_maxim).reduce((p,c)=>p+c,0),
           }]
         "
+        style="
+          font-size:x-large;
+          background:#efefef;
+        "
       >
         <tr v-for="perc in [100*obj.volum_embassat/obj.volum_maxim]">
-          <th colspan=3 style="text-align:center">TOTAL</th>
-          <th>{{obj.volum_embassat.toFixed(2)}}</th>
-          <th>{{obj.volum_maxim.toFixed(2)}}</th>
-          <th :style="{color:color(perc)}">{{perc.toFixed(2)}}%</th>
+          <th colspan=3 style="text-align:center">TOTAL (volums sumats)</th>
+          <th>{{obj.volum_embassat.toFixed(2)}} hm<sup>3</sup></th>
+          <th>{{obj.volum_maxim.toFixed(2)}} hm<sup>3</sup></th>
+          <th :style="{color:color(perc),fontSize:'larger'}">{{perc.toFixed(2)}}%</th>
           <td style="padding:1px">
             <div :style="{background:'#aaa',width:obj.volum_maxim+'px'}">
               <div :style="{background:'#00b9f3',width:obj.volum_embassat+'px',height:'1.5em'}">
