@@ -38,7 +38,6 @@
         <th>Gràfic de barres
       </tr>
 
-
       <!--recorre embassaments-->
       <tbody v-for="emb in get_resum_embassaments">
         <tr>
@@ -178,6 +177,57 @@
         return Array.from(dies).sort();
       },
 
+      get_regressio(){
+        //converteix dia a numero enter
+        let dies = this.get_dies_ordenats;
+        let xi = dies.map(str=>new Date(str).getTime());
+
+        let historic = this.get_historic; //diccionari embassaments
+        let noms     = Object.keys(historic);
+
+        let yi = dies.map(dia=>{
+          let volums = noms.map(nom=>historic[nom][dia].volum_embassat);
+          volums = volums.map(n=>parseFloat(n));
+          return volums.reduce((p,c)=>p+c,0);
+        });
+
+        //treu el primer valor
+        xi = xi.slice(1);
+        yi = yi.slice(1);
+
+        let N = xi.length;
+        if(yi.length!=N){
+          throw("x and y lenghts are different");
+        }
+
+        /*regressio lineal*/
+        let xi_sq = xi.map(x=>x*x);     //array x squared
+        let yi_sq = yi.map(y=>y*y);     //array y squared
+        let xiyi  = xi.map((_,i)=>xi[i]*yi[i]);
+
+        //sums of arrays
+        let xi_sum    = xi.reduce((p,c)=>p+c,0);    //sum of x array
+        let yi_sum    = yi.reduce((p,c)=>p+c,0);    //sum of y array
+        let xi_sq_sum = xi_sq.reduce((p,c)=>p+c,0); //sum of x squared array
+        let yi_sq_sum = yi_sq.reduce((p,c)=>p+c,0); //sum of y squared array
+        let xiyi_sum  = xiyi.reduce((p,c)=>p+c,0);  //sum of x·y array
+
+        //compute m (slope) and n (intercept) as (y = mx + n)
+        let m = (N*(xiyi_sum) - yi_sum*xi_sum)/(N*xi_sq_sum - xi_sum*xi_sum);
+        let n = (yi_sum - m*xi_sum)/N;
+
+        //compute r squared
+        let r_squared = Math.pow(N*xiyi_sum - xi_sum*yi_sum, 2)/((N*xi_sq_sum - Math.pow(xi_sum,2))*(N*yi_sq_sum - Math.pow(yi_sum,2)));
+
+        //prediccio de x quan y=0
+        //y = mx+n
+        //x = (y-n)/m
+        let x_pred = (0-n)/m;
+        let x_pred_data = new Date(x_pred).toISOString().substring(0,10);
+
+        //end
+        return {xi,yi, m, n, r_squared, x_pred_data};
+      },
     },
     //mounted(){},
   }).mount("#app");
@@ -189,14 +239,38 @@
       app.embassaments=arr;
       dibuixa_grafic();
     });
+  /**/
 
   function dibuixa_grafic(){
     let el = document.getElementById("grafic");
 
+    let regressio = app.get_regressio;
+    let dies = app.get_dies_ordenats.map(d=>d.substring(0,10));
+
+    let prediccions = dies.map(_=>0);//init
+
+    if(regressio.m<0 && regressio.r_squared>0.9){
+      while(true){
+        let ultim = new Date(dies.at(-1));
+        let nou = new Date(ultim.getTime()+86400e3).toISOString().substring(0,10);
+        dies.push(nou);
+        if(nou>=regressio.x_pred_data){
+          break;
+        }
+      }
+
+      prediccions = dies.map(dia=>{
+        let x = new Date(dia).getTime();
+        let y = regressio.m*x + regressio.n;
+        return y;
+      });
+    }
+
+
     let chart = new Chart(el,{
       type:'bar',
       data:{
-        labels:app.get_dies_ordenats.map(d=>d.substring(0,10)),
+        labels:dies,
         datasets:app.get_resum_embassaments.map(emb=>{
           return {
             label:emb.nom.replace("Embassament de ",""),
@@ -204,6 +278,10 @@
             //backgroundColor,
             //borderWidth,
           };
+        }).concat({
+          label:"Predicció",
+          data:prediccions,
+          type:"line",
         }),
       },
       options:{
@@ -223,7 +301,7 @@
         plugins:{
           title:{
             display:true,
-            text:"Històric",
+            text: regressio.m>0 ? "Històric":`Històric & predicció de volum al 0% = "${regressio.x_pred_data}" (regressió lineal: R² = ${regressio.r_squared.toFixed(4)})`,
             font:{
               size:20,
             },
