@@ -222,7 +222,7 @@
         //prediccio de x quan y=0
         //y = mx+n
         //x = (y-n)/m
-        let x_pred = (0-n)/m;
+        let x_pred      = (0-n)/m;
         let x_pred_data = new Date(x_pred).toISOString().substring(0,10);
 
         //end
@@ -247,14 +247,12 @@
     let regressio = app.get_regressio;
     let dies = app.get_dies_ordenats.map(d=>d.substring(0,10));
 
-    let prediccions = dies.map(_=>0);//init
+    let prediccions = dies.map(d=>0);//init
 
-    if(regressio.m<0 && regressio.r_squared>0.9){
+    if(regressio && regressio.m<0 && regressio.r_squared>0.9){
       while(true){
-        //let ultim = new Date(dies.at(-1)); //"Array.at()" no funciona en navegadors antics!
         let ultim = new Date(dies[dies.length-1]);
-
-        let nou = new Date(ultim.getTime()+86400e3).toISOString().substring(0,10);
+        let nou   = new Date(ultim.getTime()+86400e3).toISOString().substring(0,10);
         dies.push(nou);
         if(nou>=regressio.x_pred_data){
           break;
@@ -267,7 +265,6 @@
         return y;
       });
     }
-
 
     let chart = new Chart(el,{
       type:'bar',
