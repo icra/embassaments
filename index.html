@@ -51,7 +51,7 @@
           <td style="text-align:center">{{emb.volum_embassat}}</td>
           <td style="text-align:center">{{emb.volum_maxim.toFixed(2)}}</td>
           <td :style="{textAlign:'center',color:color(emb.percentatge_volum_embassat)}">
-            <b>{{emb.percentatge_volum_embassat}}%</b>
+            <b>{{parseFloat(emb.percentatge_volum_embassat).toFixed(1)}} %</b>
           </td>
           <td style="padding:1px">
             <div :style="{background:'#aaa',width:emb.volum_maxim+'px'}">
