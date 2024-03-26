@@ -200,12 +200,12 @@
         let noms     = Object.keys(historic);
 
         let yi = dies.map(dia=>{
-          let volums = noms.map(nom=>historic[nom][dia].volum_embassat);
+          let volums = noms.map(nom=>historic[nom][dia].volum_embassat).filter(n=>n);
           volums = volums.map(n=>parseFloat(n));
           return volums.reduce((p,c)=>p+c,0);
         });
 
-        //treu el primer valor
+        //treu el primer valor (sol estar mal format a l'api)
         xi = xi.slice(1);
         yi = yi.slice(1);
 
@@ -236,8 +236,15 @@
         //prediccio de x quan y=0
         //y = mx+n
         //x = (y-n)/m
+        //console.log({N,xi_sum,yi_sum,m,n});
         let x_pred      = (0-n)/m;
-        let x_pred_data = new Date(x_pred).toISOString().substring(0,10);
+        let x_pred_data = (function(){
+          let d = new Date(x_pred);
+          if(d) return d.toISOString().substring(0,10);
+          else {
+            throw(x_pred);
+          }
+        })();
 
         //end
         return {xi,yi, m, n, r_squared, x_pred_data};
