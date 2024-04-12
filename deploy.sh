@@ -2,7 +2,7 @@
 
 #git
 git add *
-git commit -am 'update'
+git commit
 git push
 
 #desplega al servidor

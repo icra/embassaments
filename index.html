@@ -31,11 +31,9 @@
       <tr>
         <th>Data
         <th>Embassament
-        <th>Nivell absolut (m)
-        <th>Volum embassat (hm<sup>3</sup>)
-        <th>Volum màxim (hm<sup>3</sup>)
-        <th>% volum
-        <th>Gràfic de barres
+        <th>Volum actual (hm<sup>3</sup>)
+        <th>Capacitat (hm<sup>3</sup>)
+        <th colspan=2>% volum
       </tr>
 
       <!--recorre embassaments-->
@@ -47,11 +45,13 @@
           <td>
             {{emb.nom.replace("Embassament de ","")}}
           </td>
+          <!--
           <td style="text-align:center">{{emb.nivell_absolut}}</td>
+          -->
           <td style="text-align:center">{{emb.volum_embassat}}</td>
           <td style="text-align:center">{{emb.volum_maxim.toFixed(2)}}</td>
           <td :style="{textAlign:'center',color:color(emb.percentatge_volum_embassat)}">
-            <b>{{emb.percentatge_volum_embassat}}%</b>
+            <b>{{parseFloat(emb.percentatge_volum_embassat).toFixed(1)}} %</b>
           </td>
           <td style="padding:1px">
             <div :style="{background:'#aaa',width:emb.volum_maxim+'px'}">
@@ -76,16 +76,23 @@
         "
       >
         <tr v-for="perc in [100*obj.volum_embassat/obj.volum_maxim]">
-          <th colspan=3 style="text-align:center">TOTAL (volums sumats)</th>
-          <th>{{obj.volum_embassat.toFixed(2)}} hm<sup>3</sup></th>
-          <th>{{obj.volum_maxim.toFixed(2)}} hm<sup>3</sup></th>
-          <th :style="{color:color(perc),fontSize:'larger'}">{{perc.toFixed(2)}}%</th>
-          <td style="padding:1px">
+          <th colspan=2 style="text-align:center"></th>
+          <td style="text-align:center">{{obj.volum_embassat.toFixed(2)}}</td>
+          <td style="text-align:center">{{obj.volum_maxim.toFixed(2)}}</td>
+
+          <!--cela més important-->
+          <th :style="{color:color(perc),fontSize:'larger',padding:'5px'}">{{perc.toFixed(2)}}%</th>
+
+          <td></td>
+
+          <!--
+          <td style="padding:1px;background:white">
             <div :style="{background:'#aaa',width:obj.volum_maxim+'px'}">
               <div :style="{background:'#00b9f3',width:obj.volum_embassat+'px',height:'1.5em'}">
               </div>
             </div>
           </td>
+          -->
         </tr>
       </tbody>
     </table>
@@ -186,12 +193,12 @@
         let noms     = Object.keys(historic);
 
         let yi = dies.map(dia=>{
-          let volums = noms.map(nom=>historic[nom][dia].volum_embassat);
+          let volums = noms.map(nom=>historic[nom][dia].volum_embassat).filter(n=>n);
           volums = volums.map(n=>parseFloat(n));
           return volums.reduce((p,c)=>p+c,0);
         });
 
-        //treu el primer valor
+        //treu el primer valor (sol estar mal format a l'api)
         xi = xi.slice(1);
         yi = yi.slice(1);
 
@@ -222,8 +229,15 @@
         //prediccio de x quan y=0
         //y = mx+n
         //x = (y-n)/m
+        //console.log({N,xi_sum,yi_sum,m,n});
         let x_pred      = (0-n)/m;
-        let x_pred_data = new Date(x_pred).toISOString().substring(0,10);
+        let x_pred_data = (function(){
+          let d = new Date(x_pred);
+          if(d) return d.toISOString().substring(0,10);
+          else {
+            throw(x_pred);
+          }
+        })();
 
         //end
         return {xi,yi, m, n, r_squared, x_pred_data};
@@ -281,6 +295,7 @@
           label:"Predicció",
           data:prediccions,
           type:"line",
+          pointRadius:0.1,
         }),
       },
       options:{
@@ -300,7 +315,7 @@
         plugins:{
           title:{
             display:true,
-            text: regressio.m>0 ? "Històric":`Històric & predicció de volum al 0% = "${regressio.x_pred_data}" (regressió lineal: R² = ${regressio.r_squared.toFixed(4)})`,
+            text: regressio.m>0 ? "Històric":`Històric. Predicció zero: "${regressio.x_pred_data}" (regressió lineal: R² = ${regressio.r_squared.toFixed(4)})`,
             font:{
               size:20,
             },
